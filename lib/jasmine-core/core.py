@@ -21,7 +21,13 @@ class Core(object):
     @classmethod
     def js_files(cls):
         js_files = sorted(list(filter(lambda x: '.js' in x, pkg_resources.resource_listdir(cls.js_package(), '.'))))
+
+        # jasmine.js needs to be first
         js_files.insert(0, 'jasmine.js')
+
+        # boot needs to be last
+        js_files.remove('boot.js')
+        js_files.append('boot.js')
 
         return cls._uniq(js_files)
 

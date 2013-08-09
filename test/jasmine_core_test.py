@@ -14,6 +14,7 @@ def test_js_files():
         'jasmine.js',
         'jasmine-html.js',
         'json2.js',
+        'boot.js',
     ]
 
     assert Core.js_files() == files

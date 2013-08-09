@@ -1,4 +1,4 @@
-<a name="README">[Jasmine](http://pivotal.github.com/jasmine/)</a> <a title="Build at Travis CI" href="http://travis-ci.org/#!/pivotal/jasmine"><img src="https://secure.travis-ci.org/pivotal/jasmine.png" /></a>
+<a name="README">[Jasmine](http://pivotal.github.com/jasmine/)</a> [![Build Status](https://travis-ci.org/pivotal/jasmine.png?branch=master)](https://travis-ci.org/pivotal/jasmine)
 
 =======
 **A JavaScript Testing Framework**
@@ -7,6 +7,9 @@ Jasmine is a Behavior Driven Development testing framework for JavaScript. It do
 
 Documentation & guides live here: [http://pivotal.github.com/jasmine/](http://pivotal.github.com/jasmine/)
 
+## Contributing
+
+Please read the [contributors' guide](https://github.com/pivotal/jasmine/blob/master/CONTRIBUTING.md)
 
 ## Support
 
@@ -15,11 +18,10 @@ Documentation & guides live here: [http://pivotal.github.com/jasmine/](http://pi
 * View the project backlog at Pivotal Tracker: [http://www.pivotaltracker.com/projects/10606](http://www.pivotaltracker.com/projects/10606)
 * Follow us on Twitter: [@JasmineBDD](http://twitter.com/JasmineBDD)
 
-
 ## Maintainers
 
 * [Davis W. Frank](mailto:dwfrank@pivotallabs.com), Pivotal Labs
 * [Rajan Agaskar](mailto:rajan@pivotallabs.com), Pivotal Labs
 * [Christian Williams](mailto:antixian666@gmail.com), Square
 
-Copyright (c) 2008-2012 Pivotal Labs. This software is licensed under the MIT License.
+Copyright (c) 2008-2013 Pivotal Labs. This software is licensed under the MIT License.
