@@ -8,9 +8,9 @@ describe("Env", function() {
 
   describe('ids', function() {
     it('nextSpecId should return consecutive integers, starting at 0', function() {
-      expect(env.nextSpecId()).toEqual(0);
-      expect(env.nextSpecId()).toEqual(1);
-      expect(env.nextSpecId()).toEqual(2);
+      expect(env.nextSpecId()).toEqual('spec0');
+      expect(env.nextSpecId()).toEqual('spec1');
+      expect(env.nextSpecId()).toEqual('spec2');
     });
   });
 
@@ -27,7 +27,7 @@ describe("Env", function() {
       expect(fakeReporter.jasmineStarted).toHaveBeenCalled();
     });
   });
-  
+
   it('removes all spies when env is executed', function(done) {
     originalFoo = function() {},
     testObj = {
@@ -85,11 +85,11 @@ describe("Env", function() {
       var subject = { spiedFunc: function() { originalFunctionWasCalled = true; } };
 
       originalFunc = subject.spiedFunc;
-      
+
       var spy = env.spyOn(subject, 'spiedFunc');
 
       expect(subject.spiedFunc).toEqual(spy);
-      
+
       expect(subject.spiedFunc.calls.any()).toEqual(false);
       expect(subject.spiedFunc.calls.count()).toEqual(0);
 
@@ -236,6 +236,106 @@ describe("Env integration", function() {
     env.execute();
   });
 
+  it("calls associated befores/specs/afters with the same 'this'", function(done) {
+    var env = new j$.Env();
+
+    env.addReporter({jasmineDone: done});
+
+    env.describe("tests", function() {
+      var firstTimeThrough = true, firstSpecContext, secondSpecContext;
+
+      env.beforeEach(function() {
+        if (firstTimeThrough) {
+          firstSpecContext = this;
+        } else {
+          secondSpecContext = this;
+        }
+        expect(this).toEqual({});
+      });
+
+      env.it("sync spec", function() {
+        expect(this).toBe(firstSpecContext);
+      });
+
+      env.it("another sync spec", function() {
+        expect(this).toBe(secondSpecContext);
+      });
+
+      env.afterEach(function() {
+        if (firstTimeThrough) {
+          expect(this).toBe(firstSpecContext);
+          firstTimeThrough = false;
+        } else {
+          expect(this).toBe(secondSpecContext);
+        }
+      });
+    });
+
+    env.execute();
+  });
+
+  it("calls associated befores/its/afters with the same 'this' for an async spec", function(done) {
+    var env = new j$.Env();
+
+    env.addReporter({jasmineDone: done});
+
+    env.describe("with an async spec", function() {
+      var specContext;
+
+      env.beforeEach(function() {
+        specContext = this;
+        expect(this).toEqual({});
+      });
+
+      env.it("sync spec", function(underTestCallback) {
+        expect(this).toBe(specContext);
+        underTestCallback();
+      });
+
+      env.afterEach(function() {
+        expect(this).toBe(specContext);
+      });
+    });
+
+    env.execute();
+  });
+
+  it("Allows specifying which specs and suites to run", function(done) {
+    var env = new j$.Env(),
+        calls = [],
+        suiteCallback = jasmine.createSpy('suite callback'),
+        firstSpec,
+        secondSuite;
+
+    var assertions = function() {
+      expect(calls).toEqual([
+        'third spec',
+        'first spec'
+      ]);
+      expect(suiteCallback).toHaveBeenCalled();
+      done();
+    };
+
+    env.addReporter({jasmineDone: assertions, suiteDone: suiteCallback});
+
+    env.describe("first suite", function() {
+      firstSpec = env.it("first spec", function() {
+        calls.push('first spec');
+      });
+      env.it("second spec", function() {
+        calls.push('second spec');
+      });
+    });
+
+    secondSuite = env.describe("second suite", function() {
+      env.it("third spec", function() {
+        calls.push('third spec');
+      });
+    });
+
+    env.execute([secondSuite.id, firstSpec.id]);
+  });
+
   it("Mock clock can be installed and used in tests", function(done) {
     var globalSetTimeout = jasmine.createSpy('globalSetTimeout'),
         delayedFunctionForGlobalClock = jasmine.createSpy('delayedFunctionForGlobalClock'),
@@ -293,52 +393,37 @@ describe("Env integration", function() {
   });
 
   describe("with a mock clock", function() {
-      beforeEach(function() {
-          jasmine.getEnv().clock.install();
+    var originalTimeout;
+
+    beforeEach(function() {
+      originalTimeout = j$.DEFAULT_TIMEOUT_INTERVAL;
+      jasmine.getEnv().clock.install();
+    });
+
+    afterEach(function() {
+      jasmine.getEnv().clock.uninstall();
+      j$.DEFAULT_TIMEOUT_INTERVAL = originalTimeout;
+    });
+
+    it("should wait a specified interval before failing specs haven't called done yet", function(done) {
+      var env = new j$.Env(),
+          reporter = jasmine.createSpyObj('fakeReporter', [ "specDone" ]);
+
+      reporter.specDone.and.callFake(function() {
+        expect(reporter.specDone).toHaveBeenCalledWith(jasmine.objectContaining({status: 'failed'}));
+        done();
       });
 
-      afterEach(function() {
-          jasmine.getEnv().clock.uninstall();
+      env.addReporter(reporter);
+      j$.DEFAULT_TIMEOUT_INTERVAL = 8414;
+
+      env.it("async spec that doesn't call done", function(underTestCallback) {
+        env.expect(true).toBeTruthy();
+        jasmine.getEnv().clock.tick(8414);
       });
 
-      it("should not hang on async specs that forget to call done()", function(done) {
-          var env = new j$.Env(),
-          reporter = jasmine.createSpyObj('fakeReporter', [
-              "jasmineStarted",
-              "jasmineDone",
-              "suiteStarted",
-              "suiteDone",
-              "specStarted",
-              "specDone"
-              ]);
-
-          env.addReporter(reporter);
-
-          env.describe("tests", function() {
-              env.it("async spec that will hang", function(underTestCallback) {
-                  env.expect(true).toBeTruthy();
-              });
-
-              env.it("after async spec", function() {
-                  env.expect(true).toBeTruthy();
-              });
-          });
-
-          env.execute();
-
-          reporter.jasmineDone.and.callFake(function() {
-              expect(reporter.jasmineStarted).toHaveBeenCalledWith({
-                  totalSpecsDefined: 2
-              });
-
-              expect(reporter.specDone).toHaveBeenCalledWith(jasmine.objectContaining({status: 'passed'}));
-              expect(reporter.specDone).toHaveBeenCalledWith(jasmine.objectContaining({status: 'failed'}));
-
-              done();
-          });
-
-          jasmine.getEnv().clock.tick(60001);
-      });
+      env.execute();
+    });
   });
 
   // TODO: something is wrong with this spec
@@ -400,9 +485,9 @@ describe("Env integration", function() {
       });
     });
 
-    expect(topLevelSpec.getFullName()).toBe("my tests are sometimes top level.");
-    expect(nestedSpec.getFullName()).toBe("my tests are sometimes singly nested.");
-    expect(doublyNestedSpec.getFullName()).toBe("my tests are sometimes even doubly nested.");
+    expect(topLevelSpec.getFullName()).toBe("my tests are sometimes top level");
+    expect(nestedSpec.getFullName()).toBe("my tests are sometimes singly nested");
+    expect(doublyNestedSpec.getFullName()).toBe("my tests are sometimes even doubly nested");
   });
 
   it("Custom equality testers should be per spec", function(done) {

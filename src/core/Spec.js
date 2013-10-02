@@ -58,14 +58,14 @@ getJasmineRequireObj().Spec = function() {
         var timeout = Function.prototype.apply.apply(self.timer.setTimeout, [j$.getGlobal(), [function() {
           onException(new Error('timeout'));
           done();
-        }, 10000]]);
+        }, j$.DEFAULT_TIMEOUT_INTERVAL]]);
 
         var callDone = function() {
           Function.prototype.apply.apply(self.timer.clearTimeout, [j$.getGlobal(), [timeout]]);
           done();
         };
 
-        fn(callDone); //TODO: do we care about more than 1 arg?
+        fn.call(this, callDone); //TODO: do we care about more than 1 arg?
       };
     }
 

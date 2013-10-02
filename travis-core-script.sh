@@ -9,7 +9,7 @@ then
     curl https://gist.github.com/santiycr/5139565/raw/sauce_connect_setup.sh | bash
 fi
 
-bundle exec rake core_spec
+bundle exec rake jasmine:ci
 
 #python stuff:
 

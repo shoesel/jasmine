@@ -11,6 +11,8 @@ getJasmineRequireObj().Env = function(j$) {
     var realClearTimeout = j$.getGlobal().clearTimeout;
     this.clock = new j$.Clock(global, new j$.DelayedFunctionScheduler());
 
+    var runnableLookupTable = {};
+
     var spies = [];
 
     this.currentSpec = null;
@@ -79,7 +81,7 @@ getJasmineRequireObj().Env = function(j$) {
     };
 
     var getSpecName = function(spec, currentSuite) {
-      return currentSuite.getFullName() + ' ' + spec.description + '.';
+      return currentSuite.getFullName() + ' ' + spec.description;
     };
 
     // TODO: we may just be able to pass in the fn instead of wrapping here
@@ -148,6 +150,8 @@ getJasmineRequireObj().Env = function(j$) {
         timer: {setTimeout: realSetTimeout, clearTimeout: realClearTimeout}
       });
 
+      runnableLookupTable[spec.id] = spec;
+
       if (!self.specFilter(spec)) {
         spec.disable();
       }
@@ -186,10 +190,11 @@ getJasmineRequireObj().Env = function(j$) {
       completeCallback: function() {}, // TODO - hook this up
       resultCallback: function() {} // TODO - hook this up
     });
+    runnableLookupTable[this.topSuite.id] = this.topSuite;
     this.currentSuite = this.topSuite;
 
     this.suiteFactory = function(description) {
-      return new suiteConstructor({
+      var suite = new suiteConstructor({
         env: self,
         id: self.nextSuiteId(),
         description: description,
@@ -200,13 +205,25 @@ getJasmineRequireObj().Env = function(j$) {
           self.reporter.suiteDone(attrs);
         }
       });
+
+      runnableLookupTable[suite.id] = suite;
+      return suite;
     };
 
-    this.execute = function() {
+    this.execute = function(runnablesToRun) {
+      runnablesToRun = runnablesToRun || [this.topSuite.id];
+
+      var allFns = [];
+      for(var i = 0; i < runnablesToRun.length; i++) {
+        var runnable = runnableLookupTable[runnablesToRun[i]];
+        allFns.push((function(runnable) { return function(done) { runnable.execute(done); }; })(runnable));
+      }
+
       this.reporter.jasmineStarted({
         totalSpecsDefined: totalSpecsDefined
       });
-      this.topSuite.execute(self.reporter.jasmineDone);
+
+      queueRunnerFactory({fns: allFns, onComplete: this.reporter.jasmineDone});
     };
 
     this.spyOn = function(obj, methodName) {
@@ -259,12 +276,12 @@ getJasmineRequireObj().Env = function(j$) {
 
   // TODO: move this to closure
   Env.prototype.nextSpecId = function() {
-    return this.nextSpecId_++;
+    return 'spec' + this.nextSpecId_++;
   };
 
   // TODO: move this to closure
   Env.prototype.nextSuiteId = function() {
-    return this.nextSuiteId_++;
+    return 'suite' + this.nextSuiteId_++;
   };
 
   // TODO: move this to closure
